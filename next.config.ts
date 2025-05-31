@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
         port: '5000',
         pathname: '/uploads/**', // Adjust the pathname to match your image path
       },
+       {
+      protocol: 'https',
+      hostname: 'project-managment-backend-r4hz.onrender.com',
+      pathname: '/uploads/**',
+    },
     ],
   },
 };
