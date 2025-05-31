@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { FaHeart, FaChevronDown, FaChevronRight } from "react-icons/fa";
 import ProductModal from "./AddProductModal";
@@ -37,8 +37,11 @@ interface Product {
   subCategory: {
     _id: string;
     name: string;
-    category: string;
-  };
+    category: {
+      _id: string;
+      name: string;
+    } | null;
+  } | null;
   variants: Variant[];
   images: string[];
 }
@@ -58,8 +61,7 @@ const ProductList: React.FC = () => {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [totalPages, setTotalPages] = useState<number>(1);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>("all");
@@ -81,7 +83,7 @@ const ProductList: React.FC = () => {
       const [categoriesRes, subcategoriesRes, productsRes] = await Promise.all([
         fetch("http://localhost:5000/api/categories"),
         fetch("http://localhost:5000/api/Subcategories"),
-        fetch(`http://localhost:5000/api/products?page=${currentPage}&limit=${rowsPerPage}`),
+        fetch("http://localhost:5000/api/products?page=1&limit=1000"), // Fetch all products
       ]);
 
       if (!categoriesRes.ok) throw new Error("Failed to fetch categories");
@@ -94,8 +96,7 @@ const ProductList: React.FC = () => {
 
       setCategories([{ _id: "all", name: "All Categories" }, ...categoriesData]);
       setSubcategories(subcategoriesData);
-      setProducts(productsData.products);
-      setTotalPages(productsData.totalPages);
+      setAllProducts(productsData.products);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       console.error("Fetch error:", err);
@@ -106,17 +107,36 @@ const ProductList: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, rowsPerPage]);
+  }, []);
 
-  const filteredProducts = selectedSubcategories.length > 0
-    ? products.filter((product) => selectedSubcategories.includes(product.subCategory._id))
-    : selectedCategory && selectedCategory !== "all"
-    ? products.filter((product) =>
-        subcategories.some(
-          (sub) => sub.category._id === selectedCategory && sub._id === product.subCategory._id
-        )
-      )
-    : products;
+  const filteredProducts = useMemo(() => {
+    return allProducts.filter((product) => {
+      if (!product.subCategory) return false;
+      // If subcategories are selected, filter by them
+      if (selectedSubcategories.length > 0) {
+        return selectedSubcategories.includes(product.subCategory._id);
+      }
+      // If "All Categories" is selected, show all products
+      if (selectedCategory === "all") {
+        return true;
+      }
+      // Otherwise, show all products from all subcategories under the selected category
+      return (
+        product.subCategory.category &&
+        product.subCategory.category._id === selectedCategory
+      );
+    });
+  }, [allProducts, selectedCategory, selectedSubcategories]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredProducts.length / rowsPerPage) || 1;
+  }, [filteredProducts, rowsPerPage]);
+
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return filteredProducts.slice(startIndex, endIndex);
+  }, [filteredProducts, currentPage, rowsPerPage]);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) =>
@@ -135,6 +155,13 @@ const ProductList: React.FC = () => {
         ? prev.filter((id) => id !== subcategoryId)
         : [...prev, subcategoryId]
     );
+    const subcategory = subcategories.find((sub) => sub._id === subcategoryId);
+    if (subcategory && subcategory.category && !selectedSubcategories.includes(subcategoryId)) {
+      setSelectedCategory(subcategory.category._id);
+      if (!expandedCategories.includes(subcategory.category._id)) {
+        setExpandedCategories((prev) => [...prev, subcategory.category._id]);
+      }
+    }
     setCurrentPage(1);
   };
 
@@ -161,7 +188,16 @@ const ProductList: React.FC = () => {
   };
 
   const maxPagesToShow = 10;
-  const pageNumbers = Array.from({ length: Math.min(maxPagesToShow, totalPages) }, (_, i) => i + 1);
+  const pageNumbers = Array.from(
+    { length: Math.min(maxPagesToShow, totalPages) },
+    (_, i) => i + 1
+  );
+
+  // Determine which products to display: all for categories, paginated for others
+  const displayProducts =
+    selectedCategory !== "all" && selectedSubcategories.length === 0
+      ? filteredProducts
+      : paginatedProducts;
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
   if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
@@ -199,6 +235,7 @@ const ProductList: React.FC = () => {
         isOpen={isProductModalOpen}
         onClose={() => setIsProductModalOpen(false)}
         subcategories={subcategories}
+        onProductAdded={fetchData}
       />
       <AddCategoryModal
         isOpen={isCategoryModalOpen}
@@ -234,7 +271,7 @@ const ProductList: React.FC = () => {
               {expandedCategories.includes(category._id) && category._id !== "all" && (
                 <div className="ml-4 mt-1">
                   {subcategories
-                    .filter((sub) => sub.category._id === category._id)
+                    .filter((sub) => sub.category && sub.category._id === category._id)
                     .map((sub) => (
                       <label key={sub._id} className="flex items-center p-2 cursor-pointer rounded text-xs sm:text-sm">
                         <input
@@ -253,93 +290,103 @@ const ProductList: React.FC = () => {
         </div>
 
         <div className="w-full sm:w-4/5 overflow-y-auto max-h-[calc(100vh-150px)]">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {filteredProducts.map((product) => (
-              <div
-                key={product._id}
-                className="rounded-lg shadow-sm p-3 sm:p-4 relative border border-gray-200 cursor-pointer hover:shadow-md transition"
-                onClick={() => handleProductClick(product._id)}
-              >
-                <button
-                  className="absolute top-2 right-2 rounded-full p-1.5 sm:p-2 border border-gray-300 focus:outline-none"
-                  aria-label={`Toggle wishlist for ${product.name}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleWishlistToggle(product);
-                  }}
+          {displayProducts.length === 0 ? (
+            <div className="text-center py-10 text-gray-600">No products found</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {displayProducts.map((product) => (
+                <div
+                  key={product._id}
+                  className="rounded-lg shadow-sm p-3 sm:p-4 relative border border-gray-200 cursor-pointer hover:shadow-md transition"
+                  onClick={() => handleProductClick(product._id)}
                 >
-                  <FaHeart
-                    className={`text-base sm:text-lg ${
-                      isInWishlist(product._id) ? "text-red-600" : "text-gray-600"
-                    } hover:text-blue-600 transition-colors w-4 h-4 sm:w-5 sm:h-5`}
+                  <button
+                    className="absolute top-2 right-2 rounded-full p-1.5 sm:p-2 border border-gray-300 focus:outline-none"
+                    aria-label={`Toggle wishlist for ${product.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleWishlistToggle(product);
+                    }}
+                  >
+                    <FaHeart
+                      className={`text-base sm:text-lg ${
+                        isInWishlist(product._id) ? "text-red-600" : "text-gray-600"
+                      } hover:text-blue-600 transition-colors w-4 h-4 sm:w-5 sm:h-5`}
+                    />
+                  </button>
+                  <img
+                    src={
+                      product.images && product.images.length > 0
+                        ? `${BASE_IMAGE_URL}${product.images[0].replace("\\", "/")}`
+                        : "/Laptop.png"
+                    }
+                    alt={product.name}
+                    className="w-full h-32 sm:h-40 object-contain mb-3 sm:mb-4"
+                    loading="lazy"
                   />
-                </button>
-                <img
-                  src={
-                    product.images && product.images.length > 0
-                      ? `${BASE_IMAGE_URL}${product.images[0].replace("\\", "/")}`
-                      : "/Laptop.png"
-                  }
-                  alt={product.name}
-                  className="w-full h-32 sm:h-40 object-contain mb-3 sm:mb-4"
-                  loading="lazy"
-                />
-                <h3 className="text-[#003F62] font-semibold text-xs sm:text-sm">{product.name}</h3>
-                <p className="text-[#4A4A4A] font-bold text-base sm:text-lg">
-                  ${Math.min(...product.variants.map((v) => v.price)).toFixed(2)}
-                </p>
+                  <h3 className="text-[#003F62] font-semibold text-xs sm:text-sm">{product.name}</h3>
+                  <p className="text-[#4A4A4A] font-bold text-base sm:text-lg">
+                    ${Math.min(...product.variants.map((v) => v.price)).toFixed(2)}
+                  </p>
 
-                <div className="flex mt-2">
-                  {[...Array(5)].map((_, i) => (
-                    <svg
-                      key={i}
-                      className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${i < 4 ? "text-yellow-500" : "text-gray-500"}`}
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3 .921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784 .57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81 .588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
+                  <div className="flex mt-2">
+                    {[...Array(5)].map((_, i) => (
+                      <svg
+                        key={i}
+                        className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${i < 4 ? "text-yellow-500" : "text-gray-500"}`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3 .921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784 .57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81 .588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
             <p className="text-gray-600 text-xs sm:text-sm">
-              {filteredProducts.length} of {products.length} items
+              {displayProducts.length} of {filteredProducts.length} items
             </p>
-            <div className="flex items-center space-x-1 sm:space-x-2 flex-wrap">
-              {pageNumbers.map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-xs sm:text-sm ${
-                    currentPage === page ? "bg-yellow-400 text-black" : "text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-              {totalPages > maxPagesToShow && <span className="text-gray-600 mx-1 text-xs sm:text-sm">...</span>}
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-gray-600 text-xs sm:text-sm">Show</span>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="text-[#EDA415] px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm rounded"
-              >
-                {[3, 6, 9, 12].map((num) => (
-                  <option key={num} value={num}>
-                    {num} rows
-                  </option>
-                ))}
-              </select>
-            </div>
+            {(selectedCategory === "all" || selectedSubcategories.length > 0) && (
+              <>
+                <div className="flex items-center space-x-1 sm:space-x-2 flex-wrap">
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-xs sm:text-sm ${
+                        currentPage === page ? "bg-yellow-400 text-black" : "text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  {totalPages > maxPagesToShow && (
+                    <span className="text-gray-600 mx-1 text-xs sm:text-sm">...</span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-gray-600 text-xs sm:text-sm">Show</span>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="text-[#EDA415] px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm rounded"
+                  >
+                    {[3, 6, 9, 12].map((num) => (
+                      <option key={num} value={num}>
+                        {num} rows
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

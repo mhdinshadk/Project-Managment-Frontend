@@ -35,6 +35,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, sub
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const token = localStorage.getItem('token');
 
+
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -97,56 +98,56 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, sub
 
   // Submit handler
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      toast.error('Please enter the product title.');
+  if (!title.trim()) {
+    toast.error('Please enter the product title.');
+    return;
+  }
+  if (!selectedSubcategory) {
+    toast.error('Please select a subcategory.');
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('name', title);
+    formData.append('subCategory', selectedSubcategory);
+    formData.append('variants', JSON.stringify(variants));
+
+    uploadedImages.forEach((file) => {
+      formData.append('images', file);
+    });
+
+    const response = await fetch('http://localhost:5000/api/product', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      toast.error('Error: ' + (err.error || 'Failed to add product'));
       return;
     }
-    if (!selectedSubcategory) {
-      toast.error('Please select a subcategory.');
-      return;
+
+    toast.success('Product added successfully!');
+    setTitle('');
+    setSelectedSubcategory('');
+    setVariants([{ id: '1', ram: '', price: '', qty: 1 }]);
+    setUploadedImages([]);
+    setDescription('');
+    if (onProductAdded) {
+      onProductAdded();
     }
+    onClose();
 
-    try {
-      const formData = new FormData();
-      formData.append('name', title);
-      formData.append('subCategory', selectedSubcategory);
-      formData.append('variants', JSON.stringify(variants));
-
-      uploadedImages.forEach((file) => {
-        formData.append('images', file);
-      });
-
-      const response = await fetch('http://localhost:5000/api/product', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        toast.error('Error: ' + (err.error || 'Failed to add product'));
-        return;
-      }
-
-      toast.success('Product added successfully!');
-      setTitle('');
-      setSelectedSubcategory('');
-      setVariants([{ id: '1', ram: '', price: '', qty: 1 }]);
-      setUploadedImages([]);
-      setDescription('');
-      if (onProductAdded) {
-        onProductAdded();
-      }
-      onClose();
-      
-      // Refresh the entire page
-      window.location.reload();
-    } catch (error) {
-      toast.error('Failed to add product: ' + (error as Error).message);
-    }
-  };
+    // Refresh the entire page
+    window.location.reload();
+  } catch (error) {
+    toast.error('Failed to add product: ' + (error as Error).message);
+  }
+};
 
   if (!isOpen) return null;
 

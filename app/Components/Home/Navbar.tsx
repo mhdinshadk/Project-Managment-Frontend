@@ -34,7 +34,7 @@ const Navbar: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex items-center space-x-2 sm:space-x-4 text-white text-xs sm:text-sm">
+        <div className="flex mr-0 lg:mr-24 items-center space-x-2 sm:space-x-4 text-white text-xs sm:text-sm">
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="relative cursor-pointer" onClick={toggleWishlist}>
               <Heart size={16} className="text-white w-4 h-4 sm:w-5 sm:h-5" />

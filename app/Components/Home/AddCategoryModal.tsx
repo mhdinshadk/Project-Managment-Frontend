@@ -6,12 +6,12 @@ import { toast } from 'react-toastify';
 interface AddCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCategoryAdded: () => void; // Callback to refresh categories after adding
+  onCategoryAdded: () => void;
 }
 
 export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ isOpen, onClose, onCategoryAdded }) => {
   const [categoryName, setCategoryName] = useState<string>('');
-  const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token');
 
   const handleSubmit = async () => {
     if (!categoryName.trim()) {
@@ -24,8 +24,9 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ isOpen, onCl
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`, // attach token here
+          Authorization: `Bearer ${token}`
         },
+        credentials: 'include', // ✅ include cookies in request
         body: JSON.stringify({ name: categoryName }),
       });
 
@@ -36,7 +37,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ isOpen, onCl
 
       toast.success('Category added successfully!');
       setCategoryName('');
-      onCategoryAdded(); // Trigger refresh of categories
+      onCategoryAdded();
       onClose();
     } catch (error) {
       toast.error('Failed to add category: ' + (error as Error).message);
@@ -60,7 +61,6 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ isOpen, onCl
         </div>
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-          {/* Category Name */}
           <div>
             <label htmlFor="categoryName" className="text-xs sm:text-sm font-medium text-gray-700 mb-2 block">
               Category Name :
