@@ -73,7 +73,7 @@ const ProductList: React.FC = () => {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
   const [isSubcategoryModalOpen, setIsSubcategoryModalOpen] = useState<boolean>(false);
 
-  const BASE_IMAGE_URL = "http://localhost:5000/";
+  const BASE_IMAGE_URL = "https://project-managment-backend-r4hz.onrender.com/";
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   const fetchData = async () => {
