@@ -117,7 +117,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, sub
       formData.append('images', file);
     });
 
-    const response = await fetch('http://localhost:5000/api/product', {
+    const response = await fetch('https://project-managment-backend-r4hz.onrender.com/api/product', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,

@@ -13,7 +13,7 @@ const SignIn: React.FC = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await axios.post('https://project-managment-backend-r4hz.onrender.com/api/auth/login', {
         email,
         password,
       });
@@ -67,7 +67,7 @@ const SignIn: React.FC = () => {
           </form>
         </div>
 
-        {/* Right Section - Background Image with Text */}
+        {/* Right Section */}
         <div
           className="w-full md:w-1/2 bg-[#003F62] text-white flex flex-col justify-center items-center p-8 relative bg-cover bg-center"
           style={{ backgroundImage: "url('/bg.png')" }}

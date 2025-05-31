@@ -6,10 +6,10 @@ import { useState } from "react";
 import { useWishlist } from "../../contexts/WishlistContext";
 
 const Navbar: React.FC = () => {
-  const cartCount = 3; // Replace with dynamic cart count if needed
+  const cartCount = 3; 
   const router = useRouter();
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
-  const BASE_IMAGE_URL = "http://localhost:5000/";
+  const BASE_IMAGE_URL = "https://project-managment-backend-r4hz.onrender.com/";
   const { wishlist, removeFromWishlist } = useWishlist();
 
   const handleSignIn = () => {

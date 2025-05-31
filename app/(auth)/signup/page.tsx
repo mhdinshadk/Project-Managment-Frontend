@@ -14,7 +14,7 @@ export default function SignUp() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/signup', {
+      const response = await axios.post('https://project-managment-backend-r4hz.onrender.com/api/auth/signup', {
         name,
         email,
         password,

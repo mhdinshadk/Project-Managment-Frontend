@@ -36,7 +36,7 @@ export const AddSubcategoryModal: React.FC<AddSubcategoryModalProps> = ({
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/subcategory', {
+      const response = await fetch('https://project-managment-backend-r4hz.onrender.com/api/subcategory', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

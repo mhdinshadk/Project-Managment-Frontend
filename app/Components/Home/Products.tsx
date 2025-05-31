@@ -81,9 +81,9 @@ const ProductList: React.FC = () => {
     setError(null);
     try {
       const [categoriesRes, subcategoriesRes, productsRes] = await Promise.all([
-        fetch("http://localhost:5000/api/categories"),
-        fetch("http://localhost:5000/api/Subcategories"),
-        fetch("http://localhost:5000/api/products?page=1&limit=1000"), // Fetch all products
+        fetch("https://project-managment-backend-r4hz.onrender.com/api/categories"),
+        fetch("https://project-managment-backend-r4hz.onrender.com/api/Subcategories"),
+        fetch("https://project-managment-backend-r4hz.onrender.com/api/products?page=1&limit=1000"), // Fetch all products
       ]);
 
       if (!categoriesRes.ok) throw new Error("Failed to fetch categories");
@@ -193,7 +193,7 @@ const ProductList: React.FC = () => {
     (_, i) => i + 1
   );
 
-  // Determine which products to display: all for categories, paginated for others
+
   const displayProducts =
     selectedCategory !== "all" && selectedSubcategories.length === 0
       ? filteredProducts

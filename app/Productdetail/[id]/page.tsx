@@ -33,13 +33,13 @@ const ProductDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
-  const BASE_IMAGE_URL = 'http://localhost:5000/';
+  const BASE_IMAGE_URL = 'https://project-managment-backend-r4hz.onrender.com/';
 
   useEffect(() => {
     if (id) {
       const fetchProduct = async () => {
         try {
-          const response = await fetch(`http://localhost:5000/api/product/${id}`);
+          const response = await fetch(`https://project-managment-backend-r4hz.onrender.com/api/product/${id}`);
           if (!response.ok) throw new Error('Failed to fetch product');
           const data: Product = await response.json();
           setProduct(data);

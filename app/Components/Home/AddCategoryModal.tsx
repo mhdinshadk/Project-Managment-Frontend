@@ -20,13 +20,13 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ isOpen, onCl
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/category', {
+      const response = await fetch('https://project-managment-backend-r4hz.onrender.com/api/category', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        credentials: 'include', // ✅ include cookies in request
+        credentials: 'include',
         body: JSON.stringify({ name: categoryName }),
       });
 
