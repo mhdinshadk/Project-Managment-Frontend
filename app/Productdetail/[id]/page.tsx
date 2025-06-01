@@ -7,12 +7,23 @@ import Image from 'next/image';
 import Navbar from '@/app/Components/Home/Navbar';
 import Link from 'next/link';
 import { useWishlist } from '../../contexts/WishlistContext';
+import EditProductModal from '../../Components/Home/EditProductModal';
+import { toast } from 'react-toastify';
 
 interface Variant {
   ram: string;
   price: number;
   qty: number;
-  _id?: string;
+  _id?: string; // Optional _id to match backend
+}
+
+interface Subcategory {
+  _id: string;
+  name: string;
+  category: {
+    _id: string;
+    name: string;
+  };
 }
 
 interface Product {
@@ -20,17 +31,20 @@ interface Product {
   name: string;
   variants: Variant[];
   images: string[];
+  subCategory: Subcategory;
 }
 
 const ProductDetailPage: React.FC = () => {
   const params = useParams();
-  const id = params.id;
+  const id = params.id as string;
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedRam, setSelectedRam] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   const BASE_IMAGE_URL = 'https://project-managment-backend-r4hz.onrender.com/';
@@ -39,7 +53,7 @@ const ProductDetailPage: React.FC = () => {
     if (id) {
       const fetchProduct = async () => {
         try {
-          const response = await fetch(`https://project-managment-backend-r4hz.onrender.com/api/product/${id}`);
+          const response = await fetch(`${BASE_IMAGE_URL}api/product/${id}`);
           if (!response.ok) throw new Error('Failed to fetch product');
           const data: Product = await response.json();
           setProduct(data);
@@ -51,7 +65,19 @@ const ProductDetailPage: React.FC = () => {
         }
       };
 
+      const fetchSubcategories = async () => {
+        try {
+          const response = await fetch(`${BASE_IMAGE_URL}api/subcategories`);
+          if (!response.ok) throw new Error('Failed to fetch subcategories');
+          const data = await response.json();
+          setSubcategories(data);
+        } catch (err) {
+          console.error('Error fetching subcategories:', err);
+        }
+      };
+
       fetchProduct();
+      fetchSubcategories();
     }
   }, [id]);
 
@@ -75,6 +101,23 @@ const ProductDetailPage: React.FC = () => {
     }
   };
 
+  const handleProductUpdated = () => {
+    const fetchProduct = async () => {
+      try {
+        const response = await fetch(`${BASE_IMAGE_URL}api/product/${id}`);
+        if (!response.ok) throw new Error('Failed to fetch product');
+        const data: Product = await response.json();
+        setProduct(data);
+        setSelectedRam(data.variants[0]?.ram || '');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Something went wrong');
+      }
+    };
+    fetchProduct();
+    setIsEditModalOpen(false);
+    toast.success('Product updated successfully!');
+  };
+
   if (loading) return <div className="text-center py-10">Loading...</div>;
   if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
   if (!product) return <div className="text-center py-10">Product not found</div>;
@@ -87,7 +130,6 @@ const ProductDetailPage: React.FC = () => {
       <Navbar />
       <div className="min-h-screen bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-gray-600 mb-6 sm:mb-8">
             <Link href="/" className="text-gray-800 text-sm sm:text-base">Home</Link>
             <ChevronRight size={14} className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -96,9 +138,7 @@ const ProductDetailPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-12">
-            {/* Product Images */}
             <div className="space-y-4">
-              {/* Main Image */}
               <div className="bg-gray-50 rounded-2xl p-4 sm:p-8 flex items-center justify-center aspect-square">
                 <Image
                   src={
@@ -107,13 +147,11 @@ const ProductDetailPage: React.FC = () => {
                       : '/default-image.jpg'
                   }
                   alt={product.name}
-                  width={300} 
-                  height={300} 
+                  width={300}
+                  height={300}
                   className="object-contain max-h-full max-w-full w-full h-auto"
                 />
               </div>
-
-              {/* Thumbnail Images */}
               <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-2">
                 {product.images.map((img, index) => (
                   <button
@@ -126,8 +164,8 @@ const ProductDetailPage: React.FC = () => {
                     <Image
                       src={`${BASE_IMAGE_URL}${img.replace('\\', '/')}`}
                       alt={`Thumbnail ${index + 1}`}
-                      width={60} 
-                      height={60} 
+                      width={60}
+                      height={60}
                       className="object-contain w-full h-auto"
                     />
                   </button>
@@ -135,7 +173,6 @@ const ProductDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Product Information */}
             <div className="space-y-4 sm:space-y-6">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-[#003F62] mb-3 sm:mb-4">{product.name}</h1>
@@ -144,7 +181,6 @@ const ProductDetailPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Availability */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="text-gray-700 text-sm sm:text-base">Availability:</span>
@@ -158,7 +194,6 @@ const ProductDetailPage: React.FC = () => {
                 </p>
               </div>
 
-              {/* RAM Options */}
               <div className="space-y-3">
                 <label className="text-gray-700 font-medium text-sm sm:text-base">Ram:</label>
                 <div className="flex gap-2 sm:gap-3 flex-wrap">
@@ -178,7 +213,6 @@ const ProductDetailPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Quantity Selector */}
               <div className="space-y-3">
                 <label className="text-gray-700 font-medium text-sm sm:text-base">Quantity:</label>
                 <div className="flex items-center gap-2 sm:gap-3">
@@ -198,9 +232,11 @@ const ProductDetailPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex items-center gap-2 sm:gap-4 pt-3 sm:pt-4">
-                <button className="flex-1 h-10 sm:h-12 text-sm sm:text-base font-medium bg-[#EDA415] text-white hover:bg-orange-500 rounded-md transition-colors">
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="flex-1 h-10 sm:h-12 text-sm sm:text-base font-medium bg-[#EDA415] text-white hover:bg-orange-500 rounded-md transition-colors"
+                >
                   Edit product
                 </button>
                 <button className="flex-1 h-10 sm:h-12 text-sm sm:text-base font-medium bg-[#EDA415] hover:bg-orange-500 text-white rounded-md transition-colors">
@@ -212,7 +248,7 @@ const ProductDetailPage: React.FC = () => {
                   aria-label={`Toggle wishlist for ${product.name}`}
                 >
                   <Heart
-                    size={18} 
+                    size={18}
                     className={`${
                       isInWishlist(product._id) ? 'text-red-600 fill-red-600' : 'text-gray-600'
                     } w-5 h-5 sm:w-6 sm:h-6`}
@@ -223,6 +259,14 @@ const ProductDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <EditProductModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        subcategories={subcategories}
+        product={product}
+        onProductUpdated={handleProductUpdated}
+      />
     </>
   );
 };
